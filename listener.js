@@ -100,39 +100,45 @@ function cli_exec(command,type){
           // INITIAL DEVICE IDENTIFICATION FOR DEVICE ARRAY
           case 'device_identification':
             let data = stdout.split("\n");
-            json = JSON.parse(data[0]);
-            data = json.Output;
+	    console.log('device_data', data)
+	    //json = JSON.parse(data);
+            //data = json.Output;
             var forloop = new Promise( async function(resolve, reject){
               var counter = 0;
               await Object.keys(data).forEach(async (device) => {
-                if(data[device].deviceType.includes('iPhone') || data[device].deviceType.includes('iPad')){
+	        if(data[device] != ''){
                   let device_object = {};
-                  device_object.name = data[device].name;
-                  device_object.uuid = data[device].UDID;
-                  device_object.ecid = data[device].ECID;
+                  device_object.uuid = data[device];
+		  device_object.name = await cli_exec("idevice_id "+device_object.uuid, 'device_name');
+		  device_object.name = device_object.name.replace(/\r?\n|\r/g, "");
+                  //device_object.ecid = data[device].ECID;
                   // Look for WiFi addresses since it's quick
-                  device_object.ipaddr = await cli_exec("ping -t 1 "+device_object.name,'device_ipaddr');
-                  if(device_object.ipaddr == ''){
+		  device_object.ipaddr = await cli_exec("ping -c 1 "+device_object.name+".localdomain",'device_ipaddr');
+		  //if(device_object.ipaddr == ''){
                     // Look for tethered addresses and blanks. This takes a while
-                    device_object.ipaddr = await cli_exec("grep -A1 \""+device_object.name.replace('+', '.*')+"\" /var/db/dhcpd_leases", 'device_ipaddr');
-                  }
+                    //device_object.ipaddr = await cli_exec("grep -A1 \""+device_object.name.replace('+', '.*')+"\" /var/db/dhcpd_leases", 'device_ipaddr');
+                  //}
                   devices.push(device_object);
                   console.log("[DCM] [listener.js] ["+getTime("log")+"] Found Device:", device_object);
-                }
-                if(counter >= Object.keys(data).length -1){
+		}
+                if(counter >= Object.keys(data).length - 1){
                   resolve();
                 } else {
                   counter++
                 }
               });
-            });
+            });  
 
             forloop.then(() => {
               console.log("[DCM] [listener.js] ["+getTime("log")+"] Total Devices: "+devices.length)
               return resolve();
             });
             break;
-
+	  
+	  case 'device_name':
+	    let name = '';
+            name = stdout;
+	    return resolve(name);
           // GET IP INFO
           case 'device_ipaddr':
             let ipaddr = '';
